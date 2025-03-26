@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFileUpload } from '../../lib/hooks/useFileUpload.hooks';
 import FileUpload from '../../components/baseUi/fileUpload/fileUpload.component';
 import Card from '../../components/baseUi/card/card.component';
@@ -7,9 +7,49 @@ import DeveloperLeaderboard from './components/developerLeaderboard/developerLea
 import CommitTrends from './components/commitTrends/commitTrends.component';
 import PullRequestStats from './components/pullRequestStats/pullRequestStats.component';
 import DeveloperActivity from './components/developerActivity/developerActivity.component';
+import { getLeaderboardData } from '../../services/fileProcessing/fileProcessing.service';
+import { MonthInfo } from './components/developerActivity/types';
 
 const DashboardScreen: React.FC = () => {
   const { processedData, error, isLoading, handleFileUpload } = useFileUpload();
+  const [allMonths, setAllMonths] = useState<MonthInfo[]>([]);
+
+  // Get sorted developers by same criteria as leaderboard when data is available
+  const sortedDevelopers = processedData ? getLeaderboardData(processedData).map(leaderData => {
+    return processedData.find(dev => dev.user === leaderData.name)!;
+  }) : [];
+  
+  // Extract all unique months from all developers' data
+  useEffect(() => {
+    if (!processedData || !processedData.length) return;
+    
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const monthsMap = new Map<string, MonthInfo>();
+    
+    // Collect all months from all developers
+    processedData.forEach(dev => {
+      dev.commits.weeks.forEach(week => {
+        const date = new Date(week.w * 1000);
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+        const monthLabel = `${monthNames[month]}-${year.toString().slice(2)}`;
+        
+        if (!monthsMap.has(monthKey)) {
+          monthsMap.set(monthKey, {
+            monthKey,
+            monthLabel
+          });
+        }
+      });
+    });
+    
+    // Convert to array and sort chronologically
+    const months = Array.from(monthsMap.values())
+      .sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+    
+    setAllMonths(months);
+  }, [processedData]);
 
   return (
     <div className="min-h-screen bg-gray-100 pb-10">
@@ -78,11 +118,12 @@ const DashboardScreen: React.FC = () => {
             <CommitTrends data={processedData} />
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {processedData.map((developer, index) => (
+              {sortedDevelopers.map((developer, index) => (
                 <DeveloperActivity 
                   key={developer.user} 
                   developer={developer} 
                   colorIndex={index}
+                  allMonths={allMonths}
                 />
               ))}
             </div>

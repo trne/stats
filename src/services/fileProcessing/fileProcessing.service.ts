@@ -51,40 +51,98 @@ export const getPRComparisonData = (data: ProcessedDeveloperStats[]) => {
 };
 
 export const getWeeklyCommitData = (data: ProcessedDeveloperStats[]) => {
-  // Group by week and developer
-  const weekMap = new Map<number, { week: string, [key: string]: any }>();
+  // Group by month and developer (not by week)
+  const monthMap = new Map<string, { week: string, [key: string]: any }>();
+  const monthOrder: string[] = [];
   
+  // Array of month names for formatting
+  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  
+  // Collect and aggregate all data by month for all developers
   data.forEach(dev => {
     dev.commits.weeks.forEach(week => {
-      const weekTimestamp = week.w;
-      const weekDate = new Date(weekTimestamp * 1000);
-      const weekLabel = `${weekDate.getFullYear()}-${weekDate.getMonth() + 1}-${weekDate.getDate()}`;
+      const weekDate = new Date(week.w * 1000);
+      const month = weekDate.getMonth();
+      const year = weekDate.getFullYear();
+      const yearShort = year.toString().slice(2);
       
-      if (!weekMap.has(weekTimestamp)) {
-        weekMap.set(weekTimestamp, { week: weekLabel });
+      // Create a month key for grouping (YYYY-MM format for sorting)
+      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+      const monthLabel = `${monthNames[month]}-${yearShort}`;
+      
+      // Initialize month data if not exists
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { 
+          week: monthLabel,
+          month: month,
+          year: year,
+          monthKey: monthKey
+        });
+        monthOrder.push(monthKey);
       }
       
-      const weekData = weekMap.get(weekTimestamp)!;
-      weekData[`${dev.user}_commits`] = week.c;
-      weekData[`${dev.user}_additions`] = week.a;
-      weekData[`${dev.user}_deletions`] = week.d;
+      const monthData = monthMap.get(monthKey)!;
+      
+      // Accumulate data for this developer in this month
+      const commitsKey = `${dev.user}_commits`;
+      const additionsKey = `${dev.user}_additions`;
+      const deletionsKey = `${dev.user}_deletions`;
+      
+      monthData[commitsKey] = (monthData[commitsKey] || 0) + week.c;
+      monthData[additionsKey] = (monthData[additionsKey] || 0) + week.a;
+      monthData[deletionsKey] = (monthData[deletionsKey] || 0) + week.d;
     });
   });
   
-  return Array.from(weekMap.values()).sort((a, b) => a.week.localeCompare(b.week));
+  // Initialize all developers' data for all months to ensure no gaps
+  const allDevelopers = data.map(dev => dev.user);
+  const allMonthData = Array.from(monthMap.values());
+  
+  allMonthData.forEach(monthData => {
+    allDevelopers.forEach(developer => {
+      if (!(`${developer}_commits` in monthData)) {
+        monthData[`${developer}_commits`] = 0;
+      }
+      if (!(`${developer}_additions` in monthData)) {
+        monthData[`${developer}_additions`] = 0;
+      }
+      if (!(`${developer}_deletions` in monthData)) {
+        monthData[`${developer}_deletions`] = 0;
+      }
+    });
+  });
+  
+  // Sort chronologically by year and month
+  return Array.from(monthMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([, value]) => value);
 };
 
 export const getLeaderboardData = (data: ProcessedDeveloperStats[]) => {
   return data
-    .map(dev => ({
-      name: dev.user,
-      commits: dev.commits.totals.c,
-      mergedPRs: dev.closedPRs.totalMergedPRs,
-      totalPRs: dev.totalPRs,
-      additions: dev.commits.totals.a,
-      deletions: dev.commits.totals.d,
-      // Calculate a score based on activity
-      score: dev.commits.totals.c * 5 + dev.closedPRs.totalMergedPRs * 20
-    }))
+    .map(dev => {
+      // Calculate total code changes (additions + deletions)
+      const totalCodeChanges = dev.commits.totals.a + dev.commits.totals.d;
+      
+      return {
+        name: dev.user,
+        commits: dev.commits.totals.c,
+        mergedPRs: dev.closedPRs.totalMergedPRs,
+        totalPRs: dev.totalPRs,
+        additions: dev.commits.totals.a,
+        deletions: dev.commits.totals.d,
+        // Updated scoring formula with higher weights for code changes and PRs
+        // This should ensure chanduka ranks higher than laila, and laila higher than naomi
+        score: 
+          // Code changes are weighted highest
+          (dev.commits.totals.a * 1.2) + 
+          (dev.commits.totals.d * 0.8) +
+          // PRs are weighted second highest
+          (dev.closedPRs.totalMergedPRs * 15) + 
+          (dev.openPRs.totalOpenPRs * 5) + 
+          // Commits get a moderate weight
+          (dev.commits.totals.c * 3)
+      };
+    })
     .sort((a, b) => b.score - a.score);
 };

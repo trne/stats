@@ -25,7 +25,15 @@ const BarChart: React.FC<BarChartProps> = ({
         margin={margin}
       >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xDataKey} />
+        <XAxis 
+          dataKey={xDataKey} 
+          tick={{ fontSize: 10 }}
+          interval={0}
+          padding={{ left: 10, right: 10 }}
+          angle={-30}
+          textAnchor="end"
+          height={40}
+        />
         <YAxis />
         <Tooltip />
         <Legend />

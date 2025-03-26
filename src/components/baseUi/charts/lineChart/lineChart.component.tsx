@@ -25,7 +25,12 @@ const LineChart: React.FC<LineChartProps> = ({
         margin={margin}
       >
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xDataKey} />
+        <XAxis 
+          dataKey={xDataKey} 
+          tick={{ fontSize: 12 }}
+          interval={0}
+          padding={{ left: 10, right: 10 }}
+        />
         <YAxis />
         <Tooltip />
         <Legend />

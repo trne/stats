@@ -15,6 +15,9 @@ const DeveloperLeaderboard: React.FC<DeveloperLeaderboardProps> = ({ data }) => 
           <Trophy className="mr-2 h-5 w-5 text-yellow-500" />
           Developer Leaderboard
         </h2>
+        <div className="text-xs text-gray-500">
+          Based on code changes and PR volume
+        </div>
       </div>
       
       <div className="overflow-x-auto">
@@ -72,12 +75,14 @@ const DeveloperLeaderboard: React.FC<DeveloperLeaderboardProps> = ({ data }) => 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">
-                    +{formatNumber(dev.additions)} / -{formatNumber(dev.deletions)}
+                    <span className="text-green-600">+{formatNumber(dev.additions)}</span>
+                    {" / "}
+                    <span className="text-red-600">-{formatNumber(dev.deletions)}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-semibold text-gray-900">
-                    {formatNumber(dev.score)}
+                    {formatNumber(Math.round(dev.score))}
                   </div>
                 </td>
               </tr>

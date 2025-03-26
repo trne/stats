@@ -19,10 +19,10 @@ const CommitTrends: React.FC<CommitTrendsProps> = ({ data }) => {
         color: getColorByIndex(index)
       }));
     } else {
-      // For code changes, we'll show additions
+      // For code changes, we'll show additions without the "(additions)" text
       return data.map((dev, index) => ({
         dataKey: `${dev.user}_additions`,
-        name: `${dev.user} (additions)`,
+        name: dev.user,
         color: getColorByIndex(index)
       }));
     }
@@ -66,17 +66,19 @@ const CommitTrends: React.FC<CommitTrendsProps> = ({ data }) => {
         </div>
       </div>
       
-      <div className="h-96">
-        <LineChart 
-          data={weeklyData} 
-          xDataKey="week" 
-          lineItems={getLineItems()}
-          height={400}
-        />
+      <div className="overflow-x-auto pb-4">
+        <div style={{ width: `${Math.max(100, weeklyData.length * 40)}px`, minWidth: '100%', height: '400px' }}>
+          <LineChart 
+            data={weeklyData} 
+            xDataKey="week" 
+            lineItems={getLineItems()}
+            height={400}
+          />
+        </div>
       </div>
       
       <div className="mt-4 text-sm text-gray-500">
-        <p>Showing {chartType === 'commits' ? 'commit count' : 'code additions'} over time for each developer.</p>
+        <p>Showing {chartType === 'commits' ? 'commit count' : 'code additions'} over time for each developer. Scroll horizontally to see all months.</p>
       </div>
     </Card>
   );
