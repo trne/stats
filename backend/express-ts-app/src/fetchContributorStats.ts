@@ -25,7 +25,7 @@ export const fetchContributorStats = async (repository: string = "tawny-mobile",
         } catch (error: any) {
             // If we get a 202 status, wait and retry
             if (error.response?.status === 202) {
-                console.log(`Data not ready, retrying in ${delay / 1000} seconds...`);
+                console.log(`Data not ready, retrying in ${delay / 5000} seconds...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
             } else {
                 throw new Error(error.response?.data || error.message);
