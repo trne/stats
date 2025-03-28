@@ -1,0 +1,243 @@
+{
+    "name": "Team stats",
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -560,
+          0
+        ],
+        "id": "d8719f0f-5020-4285-bd76-155e4cb820d3",
+        "name": "When clicking ‘Test workflow’"
+      },
+      {
+        "parameters": {
+          "url": "=https://api.github.com/orgs/Direct-Line-Group/teams/tawny/repos",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -340,
+          0
+        ],
+        "id": "f32115c5-e86e-47d5-b6e3-370b71b26448",
+        "name": "Get Tawny Repos",
+        "credentials": {
+          "githubApi": {
+            "id": "gInBfcUQiv6yH4ZJ",
+            "name": "GitHub account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "=https://api.github.com/repos/Direct-Line-Group/{{ $json.name }}/stats/contributors",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "options": {
+            "timeout": 1000
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -80,
+          320
+        ],
+        "id": "2b4bb18e-8444-4a9c-8026-b0e6567aec23",
+        "name": "Get Stats for repos",
+        "credentials": {
+          "githubApi": {
+            "id": "gInBfcUQiv6yH4ZJ",
+            "name": "GitHub account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const filteredItems = [];\n\nfor (const item of $input.all()) {\n  // Check if the item has an author\n  if (!item.json.author) {\n    continue; // Skip this item if author does not exist\n  }\n\n  // Initialize totals\n  let totalAdditions = 0;\n  let totalDeletions = 0;\n  let totalCommits = 0;\n\n  // Initialize a map to hold monthly data\n  const monthlyData = {};\n\n  // Check if the item has a weeks array\n  if (item.json.weeks && Array.isArray(item.json.weeks)) {\n    // Loop through the weeks array to sum the values\n    for (const week of item.json.weeks) {\n      totalAdditions += week.a; // Sum additions\n      totalDeletions += week.d; // Sum deletions\n      totalCommits += week.c;    // Sum commits\n\n      // Convert the week timestamp to a Date object\n      const date = new Date(week.w * 1000); // Convert to milliseconds\n      const yearMonth = `${date.getFullYear()}-${date.getMonth() + 1}`; // Format as \"YYYY-MM\"\n\n      // Initialize the monthly data if it doesn't exist\n      if (!monthlyData[yearMonth]) {\n        monthlyData[yearMonth] = { a: 0, d: 0, c: 0 };\n      }\n\n      // Sum the monthly data\n      monthlyData[yearMonth].a += week.a; // Add to monthly additions\n      monthlyData[yearMonth].d += week.d; // Add to monthly deletions\n      monthlyData[yearMonth].c += week.c; // Add to monthly commits\n    }\n  }\n\n  // Add the totals to the item's JSON\n  item.json.totalAdditions = totalAdditions;\n  item.json.totalDeletions = totalDeletions;\n  item.json.totalCommits = totalCommits;\n\n  // Convert the monthly data object to an array\n  item.json.months = Object.entries(monthlyData).map(([month, data]) => ({\n    month: month,\n    a: data.a,\n    d: data.d,\n    c: data.c,\n  }));\n\n  // Convert the monthly data object to an array\n  item.json.totals = Object.entries(monthlyData).map(([month, data]) => ({\n    month: month,\n    a: data.a,\n    d: data.d,\n    c: data.c,\n  }));\n\n  // Add the processed item to the filtered array\n  filteredItems.push(item);\n}\n\nreturn filteredItems;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          140,
+          320
+        ],
+        "id": "127aa708-f439-427e-ac90-68b4ba661668",
+        "name": "Filter Stats"
+      },
+      {
+        "parameters": {
+          "resource": "repository",
+          "operation": "getPullRequests",
+          "owner": {
+            "__rl": true,
+            "value": "={{ $json.owner.login }}",
+            "mode": "name"
+          },
+          "repository": {
+            "__rl": true,
+            "value": "={{ $json.name }}",
+            "mode": "name"
+          },
+          "getRepositoryPullRequestsFilters": {}
+        },
+        "type": "n8n-nodes-base.github",
+        "typeVersion": 1,
+        "position": [
+          -80,
+          0
+        ],
+        "id": "658ac441-a9c8-4412-b688-fd79c98aae6b",
+        "name": "Get Open PRs for repos",
+        "credentials": {
+          "githubApi": {
+            "id": "gInBfcUQiv6yH4ZJ",
+            "name": "GitHub account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "=https://api.github.com/repos/Direct-Line-Group/{{ $json.name }}/pulls?state=closed ",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "githubApi",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -60,
+          -280
+        ],
+        "id": "5f065108-df44-4ddd-a11c-302f87d9d071",
+        "name": "HTTP Request",
+        "credentials": {
+          "githubApi": {
+            "id": "gInBfcUQiv6yH4ZJ",
+            "name": "GitHub account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const users = {};\n\n// Loop over input items\nfor (const item of $input.all()) {\n  const { login } = item.json.user;\n  const createdAt = new Date(item.json.created_at);\n\n  if (!users[login]) {\n    users[login] = {\n      login,\n      totalOpenPRs: 0,\n      totalMergedPRs: 0,\n      totalPRs: 0,\n      totalOpenDuration: 0,\n    };\n  }\n\n  users[login].totalPRs++;\n\n  users[login].totalOpenPRs++;\n  users[login].totalOpenDuration += (new Date() - createdAt); // Open duration until now\n}\n\n// Transform into final array format with averages\nconst result = Object.values(users).map(user => ({\n  login: user.login,\n  totalOpenPRs: user.totalOpenPRs,\n  averagePROpenDuration: user.totalPRs ? user.totalOpenDuration / user.totalPRs : 0,\n}));\n\nreturn result;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          140,
+          0
+        ],
+        "id": "2b306213-e040-4cdf-a499-ff758023deda",
+        "name": "Filter Open PRs"
+      },
+      {
+        "parameters": {
+          "jsCode": "const users = {};\n\n// Loop over input items\nfor (const item of $input.all()) {\n  const { login } = item.json.user;\n  const createdAt = new Date(item.json.created_at);\n  const closedAt = item.json.closed_at ? new Date(item.json.closed_at) : null;\n  const mergedAt = item.json.merged_at ? new Date(item.json.merged_at) : null;\n  const isMerged = !!mergedAt;\n\n  if (!users[login]) {\n    users[login] = {\n      login,\n      totalMergedPRs: 0,\n      totalClosedNotMergedPRs: 0,\n      totalPRs: 0,\n      totalMergedDuration: 0, // Sum of time to merge PRs\n      totalClosedNotMergedDuration: 0, // Sum of time to close but not merge\n    };\n  }\n\n  users[login].totalPRs++;\n\n  // If PR is still open, increase open PR count and track open duration\n  if (isMerged) {\n    users[login].totalMergedPRs++;\n    users[login].totalMergedDuration += mergedAt - createdAt;\n  } else {\n    users[login].totalClosedNotMergedPRs++;\n    users[login].totalClosedNotMergedDuration += closedAt - createdAt;\n  }\n}\n\n// Transform into final array format with averages\nconst result = Object.values(users).map(user => ({\n  login: user.login,\n  totalMergedPRs: user.totalMergedPRs,\n  totalClosedNotMergedPRs: user.totalClosedNotMergedPRs,\n  averageTimeToMerge: user.totalMergedPRs ? user.totalMergedDuration / user.totalMergedPRs : 0,\n  averageTimeToCloseNotMerged: user.totalClosedNotMergedPRs ? user.totalClosedNotMergedDuration / user.totalClosedNotMergedPRs : 0,\n}));\n\nreturn result;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          160,
+          -280
+        ],
+        "id": "e255ff5d-0654-4eec-a95c-f175b32b6866",
+        "name": "Filter Closed PRs"
+      }
+    ],
+    "pinData": {},
+    "connections": {
+      "When clicking ‘Test workflow’": {
+        "main": [
+          [
+            {
+              "node": "Get Tawny Repos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Tawny Repos": {
+        "main": [
+          [
+            {
+              "node": "Get Stats for repos",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Get Open PRs for repos",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "HTTP Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Stats for repos": {
+        "main": [
+          [
+            {
+              "node": "Filter Stats",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter Stats": {
+        "main": [
+          []
+        ]
+      },
+      "Get Open PRs for repos": {
+        "main": [
+          [
+            {
+              "node": "Filter Open PRs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter Open PRs": {
+        "main": [
+          []
+        ]
+      },
+      "HTTP Request": {
+        "main": [
+          [
+            {
+              "node": "Filter Closed PRs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": false,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "versionId": "c3a13ae6-01c6-4197-b198-acf908254cce",
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "6f7f7add67d986d990e8ec9d28368ac155edd9ed61146a40f4955e15ac683409"
+    },
+    "id": "sxEYV5WKULjysWPM",
+    "tags": []
+  }
